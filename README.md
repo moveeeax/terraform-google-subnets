@@ -9,7 +9,7 @@ Access enabled by default.
 
 ```hcl
 module "subnet" {
-  source = "github.com/cybercapybara/terraform-google-subnets"
+  source = "github.com/moveeeax/terraform-google-subnets"
 
   project_id    = var.project_id
   name          = "prod-subnet"
