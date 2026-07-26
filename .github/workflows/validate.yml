@@ -24,8 +24,15 @@ jobs:
       - name: validate
         run: tofu validate
 
-      - name: validate example
-        working-directory: examples/basic
+      # Runs against a mocked provider, so it needs no credentials and makes no
+      # API calls.
+      - name: test
+        run: tofu test
+
+      - name: validate examples
         run: |
-          tofu init -backend=false
-          tofu validate
+          set -euo pipefail
+          for dir in examples/*/; do
+            echo "==> $dir"
+            (cd "$dir" && tofu init -backend=false && tofu validate)
+          done
