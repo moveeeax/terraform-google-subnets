@@ -16,23 +16,24 @@ provider "google" {
 
 resource "google_compute_network" "example" {
   project                 = var.project_id
-  name                    = "example-subnet-network"
+  name                    = "example-proxy-network"
   auto_create_subnetworks = false
 }
 
-module "subnet" {
+# A proxy-only subnet backs regional Envoy-based load balancers. It carries no
+# customer VMs, so Google rejects Private Google Access, VPC flow logs and
+# secondary ranges on it, and requires a role. The module handles the first
+# three for you and fails the plan if the role is missing.
+module "proxy_only_subnet" {
   source = "../.."
 
   project_id    = var.project_id
-  name          = "example-subnet"
+  name          = "example-proxy-only-subnet"
   network       = google_compute_network.example.self_link
   region        = var.region
-  ip_cidr_range = "10.20.0.0/24"
-
-  secondary_ip_ranges = {
-    pods     = "10.21.0.0/16"
-    services = "10.22.0.0/20"
-  }
+  ip_cidr_range = "10.30.0.0/24"
+  purpose       = "REGIONAL_MANAGED_PROXY"
+  role          = "ACTIVE"
 }
 
 variable "project_id" {
@@ -47,10 +48,10 @@ variable "region" {
 }
 
 output "subnet_id" {
-  value = module.subnet.id
+  value = module.proxy_only_subnet.id
 }
 
-output "secondary_ip_ranges" {
-  description = "Range name to CIDR, ready to hand to a GKE cluster."
-  value       = module.subnet.secondary_ip_ranges
+output "flow_logs_enabled" {
+  description = "False: a proxy-only subnet cannot emit flow logs."
+  value       = module.proxy_only_subnet.flow_logs_enabled
 }
