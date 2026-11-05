@@ -67,6 +67,10 @@ resource "google_compute_subnetwork" "this" {
   purpose                  = var.purpose
   role                     = var.role
 
+  # Without this, emptying secondary_ip_ranges leaves the existing ranges on the
+  # subnet: the provider only sends the list when it is non-empty.
+  send_secondary_ip_range_if_empty = true
+
   dynamic "secondary_ip_range" {
     for_each = var.secondary_ip_ranges
     content {

@@ -13,7 +13,7 @@ ranges, Private Google Access, flow logs — lives here.
 
 ```hcl
 module "subnet" {
-  source = "github.com/moveeeax/terraform-google-subnets"
+  source = "github.com/moveeeax/terraform-google-subnets?ref=v1.0.0"
 
   project_id    = var.project_id
   name          = "prod-subnet"
@@ -74,7 +74,7 @@ wrong and Google fails the apply; the module fails the plan instead.
 
 ```hcl
 module "proxy_only_subnet" {
-  source = "github.com/moveeeax/terraform-google-subnets"
+  source = "github.com/moveeeax/terraform-google-subnets?ref=v1.0.0"
 
   project_id    = var.project_id
   name          = "prod-proxy-only"
@@ -91,7 +91,7 @@ module "proxy_only_subnet" {
 | Name      | Version  |
 |-----------|----------|
 | terraform | >= 1.5   |
-| google    | >= 5.0   |
+| google    | >= 6.0   |
 
 Running the test suite additionally needs Terraform or OpenTofu >= 1.7 for
 `mock_provider`. That is a requirement of the tests only, not of the module.
@@ -135,13 +135,12 @@ Running the test suite additionally needs Terraform or OpenTofu >= 1.7 for
 | `secondary_ip_ranges` | Secondary IP ranges keyed by range name, ready to hand to GKE.       |
 | `flow_logs_enabled`   | Whether VPC flow logs are enabled on the subnetwork.                 |
 
-## Known limitation
+## Removing secondary ranges
 
-Removing every entry from `secondary_ip_ranges` does not remove the ranges from
-an existing subnet. The provider needs `send_secondary_ip_range_if_empty` for
-that, which does not exist in google `5.0`, this module's declared floor.
-Delete the ranges out of band, or pin a newer provider and set the attribute
-yourself, until the floor is raised.
+The module sets `send_secondary_ip_range_if_empty = true` (google >= 6.0), so
+emptying `secondary_ip_ranges` removes the ranges from an existing subnet.
+Ranges that were added to the subnet outside Terraform are removed on the
+next apply as well.
 
 ## Development
 
