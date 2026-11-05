@@ -371,3 +371,12 @@ run "rejects_secondary_ranges_on_reserved_purpose" {
 
   expect_failures = [google_compute_subnetwork.this]
 }
+
+run "empty_secondary_ranges_are_sent" {
+  command = plan
+
+  assert {
+    condition     = google_compute_subnetwork.this.send_secondary_ip_range_if_empty == true
+    error_message = "send_secondary_ip_range_if_empty must be on so that emptying secondary_ip_ranges removes them."
+  }
+}
