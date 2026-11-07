@@ -155,3 +155,17 @@ variable "flow_logs" {
     error_message = "flow_logs.metadata_fields must list at least one field when flow_logs.metadata is CUSTOM_METADATA."
   }
 }
+
+variable "network_users" {
+  description = "IAM members granted roles/compute.networkUser on this subnetwork only, e.g. \"serviceAccount:123456789@cloudservices.gserviceaccount.com\" for a Shared VPC service project. Granting the role on the host project instead exposes every subnet in it. Not allowed for purposes that reserve the subnet for a Google-managed control plane."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for member in var.network_users :
+      can(regex("^(user|serviceAccount|group|domain|principal|principalSet):.+$", member))
+    ])
+    error_message = "Every network_users entry must be an IAM member of the form \"<type>:<id>\", where type is user, serviceAccount, group, domain, principal or principalSet."
+  }
+}
