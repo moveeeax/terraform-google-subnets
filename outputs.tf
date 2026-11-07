@@ -32,3 +32,8 @@ output "flow_logs_enabled" {
   description = "Whether VPC flow logs are enabled on the subnetwork. False when flow_logs.enabled is false or the subnetwork's purpose cannot emit flow logs."
   value       = local.flow_logs_enabled
 }
+
+output "network_users" {
+  description = "IAM members granted roles/compute.networkUser on the subnetwork."
+  value       = sort(keys(google_compute_subnetwork_iam_member.network_user))
+}

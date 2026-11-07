@@ -105,6 +105,11 @@ resource "google_compute_subnetwork" "this" {
     }
 
     precondition {
+      condition     = local.is_reserved_purpose ? length(var.network_users) == 0 : true
+      error_message = "network_users is not supported when purpose is \"${var.purpose}\"; only subnets that carry customer VMs are shared with service projects."
+    }
+
+    precondition {
       condition     = local.is_proxy_subnet ? var.role != null : true
       error_message = "role must be set to \"ACTIVE\" or \"BACKUP\" when purpose is \"${var.purpose}\"; Google rejects a proxy-only subnet without a role."
     }
@@ -114,4 +119,18 @@ resource "google_compute_subnetwork" "this" {
       error_message = "role must not be set when purpose is \"${var.purpose}\"; it only applies to proxy-only subnets."
     }
   }
+}
+
+# Shared VPC: grant service projects use of this one subnet. Granting
+# roles/compute.networkUser on the host project instead would expose every
+# subnet in it. The _member resource is additive, so grants made outside this
+# module on the same subnet are left alone.
+resource "google_compute_subnetwork_iam_member" "network_user" {
+  for_each = toset(var.network_users)
+
+  project    = var.project_id
+  region     = var.region
+  subnetwork = google_compute_subnetwork.this.name
+  role       = "roles/compute.networkUser"
+  member     = each.value
 }

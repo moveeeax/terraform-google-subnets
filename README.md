@@ -86,6 +86,36 @@ module "proxy_only_subnet" {
 }
 ```
 
+## Shared VPC network users
+
+In a Shared VPC, service projects need `roles/compute.networkUser` to place
+resources in the host project's subnets. Granting it on the host project
+exposes every subnet there. `network_users` grants it on this subnet only,
+with one additive `google_compute_subnetwork_iam_member` per member:
+
+```hcl
+module "subnet" {
+  source = "github.com/moveeeax/terraform-google-subnets?ref=v1.0.0"
+
+  project_id    = var.host_project_id
+  name          = "prod-subnet"
+  network       = module.vpc.self_link
+  region        = "us-central1"
+  ip_cidr_range = "10.20.0.0/24"
+
+  network_users = [
+    "serviceAccount:${var.service_project_number}@cloudservices.gserviceaccount.com",
+    "group:service-team@example.com",
+  ]
+}
+```
+
+Each entry must be a full IAM member (`user:`, `serviceAccount:`, `group:`,
+`domain:`, `principal:` or `principalSet:`). The module fails the plan if
+`network_users` is set on a subnet whose purpose reserves it for a
+Google-managed control plane. Attaching the service project to the host
+project is outside this module.
+
 ## Requirements
 
 | Name      | Version  |
@@ -111,6 +141,7 @@ Running the test suite additionally needs Terraform or OpenTofu >= 1.7 for
 | `purpose`                  | Subnet purpose. See [Subnet purposes](#subnet-purposes).                                          | `string`      | `"PRIVATE"` |    no    |
 | `role`                     | `ACTIVE` or `BACKUP`. Required for proxy-only purposes, rejected for the rest.                     | `string`      | `null`      |    no    |
 | `flow_logs`                | VPC flow log settings. See [Defaults worth knowing](#defaults-worth-knowing).                      | `object`      | `{}`        |    no    |
+| `network_users`            | IAM members granted `roles/compute.networkUser` on this subnet. See [Shared VPC network users](#shared-vpc-network-users). | `list(string)` | `[]` | no |
 
 ### `flow_logs`
 
@@ -134,6 +165,7 @@ Running the test suite additionally needs Terraform or OpenTofu >= 1.7 for
 | `gateway_address`     | Gateway IP address of the subnetwork.                                |
 | `secondary_ip_ranges` | Secondary IP ranges keyed by range name, ready to hand to GKE.       |
 | `flow_logs_enabled`   | Whether VPC flow logs are enabled on the subnetwork.                 |
+| `network_users`       | IAM members granted `roles/compute.networkUser` on the subnetwork.   |
 
 ## Removing secondary ranges
 

@@ -380,3 +380,81 @@ run "empty_secondary_ranges_are_sent" {
     error_message = "send_secondary_ip_range_if_empty must be on so that emptying secondary_ip_ranges removes them."
   }
 }
+
+# --- Shared VPC network users -----------------------------------------------
+
+run "no_network_users_by_default" {
+  command = plan
+
+  assert {
+    condition     = length(google_compute_subnetwork_iam_member.network_user) == 0
+    error_message = "The module must not grant any subnet IAM unless network_users is set."
+  }
+}
+
+run "network_users_get_subnet_level_network_user" {
+  command = plan
+
+  variables {
+    network_users = [
+      "serviceAccount:123456789@cloudservices.gserviceaccount.com",
+      "group:service-team@example.com",
+    ]
+  }
+
+  assert {
+    condition     = length(google_compute_subnetwork_iam_member.network_user) == 2
+    error_message = "Each network_users entry should get its own IAM member binding."
+  }
+
+  assert {
+    condition = alltrue([
+      for binding in google_compute_subnetwork_iam_member.network_user :
+      binding.role == "roles/compute.networkUser"
+    ])
+    error_message = "network_users must be granted roles/compute.networkUser."
+  }
+
+  assert {
+    condition = alltrue([
+      for binding in google_compute_subnetwork_iam_member.network_user :
+      binding.project == "test-project" && binding.region == "us-central1" && binding.subnetwork == "test-subnet"
+    ])
+    error_message = "The grant must target this subnetwork, not the host project."
+  }
+
+  assert {
+    condition     = google_compute_subnetwork_iam_member.network_user["group:service-team@example.com"].member == "group:service-team@example.com"
+    error_message = "The member should be passed through unchanged."
+  }
+
+  assert {
+    condition = output.network_users == tolist([
+      "group:service-team@example.com",
+      "serviceAccount:123456789@cloudservices.gserviceaccount.com",
+    ])
+    error_message = "network_users output should list the granted members."
+  }
+}
+
+run "rejects_network_user_without_member_type" {
+  command = plan
+
+  variables {
+    network_users = ["service-team@example.com"]
+  }
+
+  expect_failures = [var.network_users]
+}
+
+run "rejects_network_users_on_reserved_purpose" {
+  command = plan
+
+  variables {
+    purpose       = "REGIONAL_MANAGED_PROXY"
+    role          = "ACTIVE"
+    network_users = ["group:service-team@example.com"]
+  }
+
+  expect_failures = [google_compute_subnetwork.this]
+}
